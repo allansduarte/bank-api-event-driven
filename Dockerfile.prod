@@ -1,0 +1,48 @@
+FROM elixir:1.10.1-alpine as build
+
+RUN apk add --update git build-base nodejs npm yarn python
+
+ARG DATABASE_URL
+ARG SECRET_KEY_BASE
+ENV DATABASE_URL=${DATABASE_URL}
+ENV SECRET_KEY_BASE=${SECRET_KEY_BASE}
+ENV MIX_ENV=prod
+
+RUN apk add --update git && \
+    rm -rf /var/cache/apk/*
+
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+RUN mkdir /app
+WORKDIR /app
+
+COPY config ./config
+COPY lib ./lib
+COPY priv ./priv
+COPY mix.exs .
+COPY mix.lock .
+
+RUN mix deps.get
+RUN mix deps.compile
+RUN mix phx.digest
+RUN mix compile
+RUN mix release
+
+FROM alpine:3.9 AS app
+
+RUN apk add --update bash openssl postgresql-client
+
+EXPOSE 4000
+ENV MIX_ENV=prod
+
+RUN mkdir /app
+WORKDIR /app
+
+COPY --from=build /app/_build/prod/rel/bank_api .
+COPY entrypoint.sh .
+RUN chown -R nobody: /app
+USER nobody
+
+ENV HOME=/app
+CMD ["bash", "/app/entrypoint.sh"]

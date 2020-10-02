@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: bank-api-web
+  template:
+    metadata:
+      labels:
+        component: users-api-web
+    spec:
+      containers:
+        - name: client
+          image: guuhworship/bank_api
+          ports:
+            - containerPort: 4000

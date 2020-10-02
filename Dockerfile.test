@@ -1,0 +1,27 @@
+FROM elixir:1.10.1-alpine as build
+
+RUN apk add --update git build-base nodejs npm yarn python bash postgresql-client
+
+ENV MIX_ENV=test
+
+RUN apk add --update git && \
+    rm -rf /var/cache/apk/*
+
+RUN mkdir /app
+WORKDIR /app
+
+RUN mix local.hex --force && \
+    mix local.rebar --force
+
+COPY config ./config
+COPY lib ./lib
+COPY test ./test
+COPY priv ./priv
+COPY mix.exs .
+COPY mix.lock .
+
+RUN mix deps.get
+RUN mix deps.compile
+
+COPY entrypoint.sh .
+CMD ["bash", "/app/entrypoint.sh"]
